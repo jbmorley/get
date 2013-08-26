@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# 
+# Copyright (c) 2013 Jason Barrie Morley.
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import os
+import subprocess
+import argparse
+import json
+import urllib2
+import base64
+import sys
+
+class Chdir():
+
+  def __init__(self, directory):
+    self.directory = directory
+
+  def __enter__(self):
+    self.previous = os.getcwd()
+    os.chdir(self.directory)
+    print "Changing directory to '%s'..." % self.directory
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    print "Restoring directory to '%s'..." % self.previous
+    os.chdir(self.previous)
+    
+
+def add_repository(url, directory):
+
+  # Expand the path.
+  target = os.path.expanduser(directory)
+  target = os.path.abspath(target)
+  
+  # Ensure the parent path exists.
+  (parent, file) = os.path.split(target)
+  if (not os.path.exists(parent)):
+    os.makedirs(parent)
+    
+  # Check to see if the repository exists.
+  # If the repository exists, attempt to git update.
+  # If the repository does not exist, check it out.
+  
+  if (not os.path.exists(target)):
+    with Chdir(parent):
+      print "Checking out repository..."
+      subprocess.call(["git", "clone", url])
+  else:
+    with Chdir(target):
+      print "Updating the repository..."
+      subprocess.call(["git", "pull"])
+      
+  # Add the tools to .bash_profile if it's not present in the environment.
+  # N.B. This is Mac-specific and will need to be updated with special-case
+  # behaviour for various platforms.
+  path = os.environ["PATH"].split(":")
+  path = map(lambda x:os.path.expanduser(x), path)
+  path = map(lambda x:os.path.abspath(x), path)
+  
+  if (not target in path):
+    print "Updating environment..."
+    with open(os.path.expanduser("~/.bash_profile"), "a") as profile:
+      profile.write("\nexport PATH=%s:$PATH" % target)
+
+
+def main():
+  parser = argparse.ArgumentParser(description = "Clone or update git repositories and ensure they are available on the path.")
+  parser.add_argument("profile", help = "JSON encoded profile as a string, file or URL")
+  parser.add_argument("-u", "--username", help = "Username for basic HTTP authentication")
+  parser.add_argument("-p", "--password", help = "Username for basic HTTP authentication")
+  options = parser.parse_args()
+
+  profile = None
+
+  # First attempt to load the profile as a JSON string.
+  try:
+    profile = json.loads(options.profile)
+  except:
+
+    # If the profile fails to load as JSON attempt to load it as a file.
+    file = os.path.expanduser(options.profile)
+    try:
+      with open(file) as f:
+        profile = f.read()
+        profile = json.loads(profile)
+    except:
+
+      # If the profile fails to load from the file, fetch it as a URL.
+      request = urllib2.Request(options.profile)
+
+      # Get the username.
+      username = options.username
+      try:
+        if not username:
+          username = os.environ['GET_USERNAME']
+      except:
+        pass
+
+      # Get the password.
+      password = options.password
+      try:
+        if not password:
+          password = os.environ['GET_PASSWORD']
+      except:
+        pass
+
+      # Add the log in details if specified.
+      # These can be specified on the command line or as environment variables.
+      if (username and password):
+        base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % base64string)
+
+      # Fetch the URL.
+      try:
+        response = urllib2.urlopen(request)
+        profile = response.read()
+        profile = json.loads(profile)
+      except:
+        pass
+
+  # Check to see if we've successfully loaded a profile.
+  if not profile:
+    print "Unable to load the profile."
+    sys.exit(0)
+
+  print profile
+
+  for key, value in profile.iteritems():
+    add_repository(value, "~/get/%s" % key)
+
+
+if __name__ == "__main__":
+  main()
+
