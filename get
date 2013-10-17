@@ -42,13 +42,18 @@ class Chdir():
   def __exit__(self, exc_type, exc_val, exc_tb):
     print "Restoring directory to '%s'..." % self.previous
     os.chdir(self.previous)
-    
+
+
+def log(string):
+  sys.stderr.write('%s\n' % string)
+  
 
 def add_repository(url, directory):
 
   # Expand the path.
   target = os.path.expanduser(directory)
   target = os.path.abspath(target)
+  url = os.path.expanduser(url)
   
   # Ensure the parent path exists.
   (parent, file) = os.path.split(target)
@@ -61,11 +66,13 @@ def add_repository(url, directory):
   
   if (not os.path.exists(target)):
     with Chdir(parent):
-      print "Checking out repository..."
+      log(parent)
+      log(url)
+      log("Checking out repository...")
       subprocess.call(["git", "clone", url])
   else:
     with Chdir(target):
-      print "Updating the repository..."
+      log("Updating the repository...")
       subprocess.call(["git", "pull"])
       
   # Add the tools to .bash_profile if it's not present in the environment.
@@ -75,11 +82,18 @@ def add_repository(url, directory):
   path = map(lambda x:os.path.expanduser(x), path)
   path = map(lambda x:os.path.abspath(x), path)
   
+  export = ""
+  # TODO Consider coming up with a better way of checking if the target
+  # is in the configuration file before writing an update. It may be sufficient
+  # to just check for a line of the specific format we insert.
   if (not target in path):
-    print "Updating environment..."
+    log("Updating environment...")
     with open(os.path.expanduser("~/.bash_profile"), "a") as profile:
-      profile.write("\nexport PATH=%s:$PATH" % target)
+      export = "export PATH=%s:$PATH" % target
 
+      profile.write("\n%s" % export)
+
+  return export
 
 def main():
   parser = argparse.ArgumentParser(description = "Clone or update git repositories and ensure they are available on the path.")
@@ -138,13 +152,16 @@ def main():
 
   # Check to see if we've successfully loaded a profile.
   if not profile:
-    print "Unable to load the profile."
+    log("Unable to load the profile.")
     sys.exit(0)
 
-  print profile
-
+  # Clone or update the repositories updating the bash profile if neccessary.
+  exports = []
   for key, value in profile.iteritems():
-    add_repository(value, "~/get/%s" % key)
+    exports.append(add_repository(value, "~/get/%s" % key))
+
+  # Output the neccessary exports so they can be sourced.
+  print '\n'.join(exports)
 
 
 if __name__ == "__main__":
