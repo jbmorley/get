@@ -11,15 +11,35 @@ Get should work equally well on Linux and OS X systems but has only been tested 
 Usage
 -----
 
-Using get is simply a matter of adding the following line to 
+Using get is simply a matter of adding something like the following line to the beginning of your build script.
 
-    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - profile.json )
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - <profile> )
 
-If you plan to use get as part of a Hudson or Jenkins build system, don't forget to explicitly source your .bash_profile (or equivalent) to ensure all your other tools are on the path. e.g.
+Profiles specify the repositories to add to your path. They can be provided inline, or as a local or remote path (see below).
+
+If you plan to use get as part of a Hudson or Jenkins build system, don't forget to explicitly source your .bash_profile (or equivalent) to ensure all your other tools are on the path.
 
     source ~/.bash_profile
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - <profile> )
+
+Profiles
+--------
+
+Profiles are specified as a JSON mapping of repository name to path:
+
+    {
+      "neko": "git@github.com:jbmorley/neko.git",
+      "mnfy": "git@github.com:brettcannon/mnfy.git"
+    }
+
+Get supports inline, local and remote paths for profiles.
+
+### Inline
+
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - '{ "neko": "git@github.com:jbmorley/neko.git" }' )
+
+### Local
+
     $( curl https://raw.github.com/jbmorley/get/master/get-min | python - profile.json )
 
-Specifications
---------------
-
+### Remote
