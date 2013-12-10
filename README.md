@@ -13,12 +13,12 @@ Usage
 
 Using get is simply a matter of adding the following line to 
 
-    $( curl -fsSL http://projects.jbmorley.co.uk/toolchain/get | python )
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - profile.json )
 
 If you plan to use get as part of a Hudson or Jenkins build system, don't forget to explicitly source your .bash_profile (or equivalent) to ensure all your other tools are on the path. e.g.
 
     source ~/.bash_profile
-    $( curl -fsSL http://projects.jbmorley.co.uk/toolchain/get | python )
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - profile.json )
 
 Specifications
 --------------
