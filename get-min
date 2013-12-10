@@ -1,0 +1,58 @@
+import os
+import subprocess
+import argparse
+import json
+import urllib2
+import base64
+import sys
+def log(message):
+ if len(message)>0:sys.stderr.write('%s\n'%message)
+class Path:
+ def __init__(self):self.items=os.environ['PATH'].split(':')
+ def prepend(self,item):
+  if not item in self:self.items.insert(0,item)
+ def append(self,item):
+  if not item in self:self.items.append(item)
+ def __str__(self):return ':'.join(self.items)
+ def __contains__(self,item):return item in self.items
+class Chdir:
+ def __init__(self,directory):self.directory=directory
+ def __enter__(self):self.previous=os.getcwd();os.chdir(self.directory);log("Changing directory to '%s'..."%self.directory);return self
+ def __exit__(self,exc_type,exc_val,exc_tb):log("Restoring directory to '%s'..."%self.previous);os.chdir(self.previous)
+def git(parameters):
+ output=subprocess.check_output(['git']+parameters);lines=output.split('\n')
+ for line in lines:log(line)
+def add_repository(url,directory):
+ target=os.path.expanduser(directory);target=os.path.abspath(target);url=os.path.expanduser(url);parent,file=os.path.split(target)
+ if not os.path.exists(parent):os.makedirs(parent)
+ if not os.path.exists(target):
+  with Chdir(parent):log(parent);log(url);log('Checking out repository...');git(['clone',url])
+ else:
+  with Chdir(target):log('Updating the repository...');git(['pull'])
+ path=Path();export='';return target
+def main():
+ parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',help='JSON encoded profile as a string, file or URL');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');options=parser.parse_args();profile=None
+ try:profile=json.loads(options.profile)
+ except:
+  file=os.path.expanduser(options.profile)
+  try:
+   with open(file) as f:profile=f.read();profile=json.loads(profile)
+  except:
+   request=urllib2.Request(options.profile);username=options.username
+   try:
+    if not username:username=os.environ['GET_USERNAME']
+   except:pass
+   password=options.password
+   try:
+    if not password:password=os.environ['GET_PASSWORD']
+   except:pass
+   if username and password:base64string=base64.encodestring('%s:%s'%(username,password)).replace('\n','');request.add_header('Authorization','Basic %s'%base64string)
+   try:response=urllib2.urlopen(request);profile=response.read();profile=json.loads(profile)
+   except:pass
+ if not profile:log('Unable to load the profile.');sys.exit(0)
+ repositories=[]
+ for key,value in profile.iteritems():repositories.append(add_repository(value,'~/get/%s'%key))
+ path=Path()
+ for repository in repositories:path.prepend(repository)
+ print('export PATH=%s'%path)
+if __name__=='__main__':main()
