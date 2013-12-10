@@ -43,3 +43,5 @@ Get supports inline, local and remote paths for profiles.
     $( curl https://raw.github.com/jbmorley/get/master/get-min | python - profile.json )
 
 ### Remote
+
+    $( curl https://raw.github.com/jbmorley/get/master/get-min | python - https://raw.github.com/jbmorley/get/master/example.json )
