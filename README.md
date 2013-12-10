@@ -45,3 +45,12 @@ Get supports inline, local and remote paths for profiles.
 ### Remote
 
     $( curl https://raw.github.com/jbmorley/get/master/get-min | python - https://raw.github.com/jbmorley/get/master/example.json )
+
+
+Future
+------
+
+* Add support for making permanent additions to the `.bash_profile`, `.bashrc`, etc.
+* Add some automated tests to ensure future development doesn't break the supported range of profile types.
+* Check support for cloning local repositories. This should work but requires testing.
+* Support for a default local profile path.
