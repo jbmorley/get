@@ -21,11 +21,6 @@
 # SOFTWARE.
 
 
-# TODO Make sure cloning local repositories works just as well as remote repositories.
-# TODO Minify the script.
-# TODO Move everything into an appropriate directory.
-# TODO Consider using a hard-coded path.
-
 import os
 import subprocess
 import argparse
@@ -112,20 +107,7 @@ def add_repository(url, directory):
     with Chdir(target):
       log("Updating the repository...")
       git(["pull"])
-      
-  # Add the tools to .bash_profile if it's not present in the environment.
-  path = Path()
-  export = ""
-  # TODO Consider coming up with a better way of checking if the target
-  # is in the configuration file before writing an update. It may be sufficient
-  # to just check for a line of the specific format we insert.
-  # TODO Consider re-enabling the writing to the file.
-  #if (not target in path):
-  #  log("Updating environment...")
-  #  with open(os.path.expanduser("~/.bash_profile"), "a") as profile:
-  #    export = "export PATH=%s:$PATH" % target
-  #    #profile.write("\n%s" % export)
-
+  
   return target
 
 def main():
@@ -192,12 +174,10 @@ def main():
 
   # Clone or update the repositories.
   for key, value in profile.iteritems():
-    repositories.append(add_repository(value, "~/get/%s" % key))
+    repositories.append(add_repository(value, "~/.get/%s" % key))
 
   # Get the current path.
   path = Path()
-
-  # TODO Update the .bash_profile if neccessary.
 
   # Add the repositories to the path and echo an export statement so it can be sourced.
   for repository in repositories:

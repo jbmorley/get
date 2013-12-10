@@ -29,7 +29,7 @@ def add_repository(url,directory):
   with Chdir(parent):log(parent);log(url);log('Checking out repository...');git(['clone',url])
  else:
   with Chdir(target):log('Updating the repository...');git(['pull'])
- path=Path();export='';return target
+ return target
 def main():
  parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',help='JSON encoded profile as a string, file or URL');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');options=parser.parse_args();profile=None
  try:profile=json.loads(options.profile)
@@ -51,7 +51,7 @@ def main():
    except:pass
  if not profile:log('Unable to load the profile.');sys.exit(0)
  repositories=[]
- for key,value in profile.iteritems():repositories.append(add_repository(value,'~/get/%s'%key))
+ for key,value in profile.iteritems():repositories.append(add_repository(value,'~/.get/%s'%key))
  path=Path()
  for repository in repositories:path.prepend(repository)
  print('export PATH=%s'%path)
