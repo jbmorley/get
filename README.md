@@ -46,6 +46,10 @@ Get supports inline, local and remote paths for profiles.
 
     $( curl https://raw.github.com/jbmorley/get/master/get-min | python - https://raw.github.com/jbmorley/get/master/example.json )
 
+### Default
+
+If no profile is specified then the default local path of `~/.get/default.json` will be used.
+
 
 Future
 ------
