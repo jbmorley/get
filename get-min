@@ -31,7 +31,7 @@ def add_repository(url,directory):
   with Chdir(target):log('Updating the repository...');git(['pull'])
  return target
 def main():
- parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',help='JSON encoded profile as a string, file or URL');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');options=parser.parse_args();profile=None
+ parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',nargs='?',default='~/.get/default.json',help='JSON encoded profile as a string, file or URL');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');options=parser.parse_args();profile=None
  try:profile=json.loads(options.profile)
  except:
   file=os.path.expanduser(options.profile)
@@ -49,7 +49,7 @@ def main():
    if username and password:base64string=base64.encodestring('%s:%s'%(username,password)).replace('\n','');request.add_header('Authorization','Basic %s'%base64string)
    try:response=urllib2.urlopen(request);profile=response.read();profile=json.loads(profile)
    except:pass
- if not profile:log('Unable to load the profile.');sys.exit(0)
+ if not profile:log("Unable to load profile '%s'."%options.profile);sys.exit(0)
  repositories=[]
  for key,value in profile.iteritems():repositories.append(add_repository(value,'~/.get/%s'%key))
  path=Path()

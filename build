@@ -1,3 +1,0 @@
-#!/bin/bash
-
-mnfy.py get > get-min || exit 1
