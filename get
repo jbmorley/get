@@ -115,6 +115,7 @@ def main():
   parser.add_argument("profile", nargs = '?', default = "~/.get/default.json", help = "JSON encoded profile as a string, file or URL. If no profile is specified then the default local path of ~/.get/default.json will be used.")
   parser.add_argument("-u", "--username", help = "Username for basic HTTP authentication")
   parser.add_argument("-p", "--password", help = "Username for basic HTTP authentication")
+  parser.add_argument("-P", "--persist", action = "store_true", default = False, help = "Persist the path modifications by appending to ~/.bash_profile")
   options = parser.parse_args()
 
   profile = None
@@ -178,6 +179,19 @@ def main():
 
   # Get the current path.
   path = Path()
+
+  # Update .bash_profile if the user elects to persist the path.
+  exports = []
+  if options.persist:
+    for repository in repositories:
+      if not repository in path:
+        exports.append("export PATH=%s:$PATH\n" % repository)
+
+  if len(exports) > 0:
+    with open(os.path.expanduser('~/.bash_profile'), 'a') as file:
+      file.write("\n")
+      for export in exports:
+        file.write(export)
 
   # Add the repositories to the path and echo an export statement so it can be sourced.
   for repository in repositories:
