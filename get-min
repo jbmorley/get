@@ -5,6 +5,7 @@ import json
 import urllib2
 import base64
 import sys
+DEFAULT_PROFILE='~/.get/default.json'
 def log(message):
  if len(message)>0:sys.stderr.write('%s\n'%message)
 class Path:
@@ -20,23 +21,27 @@ class Chdir:
  def __enter__(self):self.previous=os.getcwd();os.chdir(self.directory);log("Changing directory to '%s'..."%self.directory);return self
  def __exit__(self,exc_type,exc_val,exc_tb):log("Restoring directory to '%s'..."%self.previous);os.chdir(self.previous)
 def git(parameters):
- output=subprocess.check_output(['git']+parameters);lines=output.split('\n')
- for line in lines:log(line)
+ try:
+  command=['git']+parameters;log('Running: %s'%' '.join(command));output=subprocess.check_output(command);lines=output.split('\n')
+  for line in lines:log(line)
+ except:log('Unable to clone repository.');exit(1)
 def add_repository(url,directory):
  target=os.path.expanduser(directory);target=os.path.abspath(target);url=os.path.expanduser(url);parent,file=os.path.split(target)
  if not os.path.exists(parent):os.makedirs(parent)
  if not os.path.exists(target):
-  with Chdir(parent):log(parent);log(url);log('Checking out repository...');git(['clone',url])
+  with Chdir(parent):log('Checking out repository...');git(['clone',url,target])
  else:
   with Chdir(target):log('Updating the repository...');git(['pull'])
  return target
+def read_profile(filename):
+ with open(filename) as f:profile=f.read();profile=json.loads(profile)
+ return profile
 def main():
- parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',nargs='?',default='~/.get/default.json',help='JSON encoded profile as a string, file or URL. If no profile is specified then the default local path of ~/.get/default.json will be used.');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');parser.add_argument('-P','--persist',action='store_true',default=False,help='Persist the path modifications by appending to ~/.bash_profile');options=parser.parse_args();profile=None
+ parser=argparse.ArgumentParser(description='Clone or update git repositories and ensure they are available on the path.');parser.add_argument('profile',nargs='?',default=DEFAULT_PROFILE,help='JSON encoded profile as a string, file or URL. If no profile is specified then the default local path of ~/.get/default.json will be used');parser.add_argument('-u','--username',help='Username for basic HTTP authentication');parser.add_argument('-p','--password',help='Username for basic HTTP authentication');parser.add_argument('-P','--persist',action='store_true',default=False,help='Persist the path modifications by appending to ~/.bash_profile');parser.add_argument('-s','--save',action='store_true',default=False,help='Merge the profile into the default profile for future updates');options=parser.parse_args();profile=None
  try:profile=json.loads(options.profile)
  except:
   file=os.path.expanduser(options.profile)
-  try:
-   with open(file) as f:profile=f.read();profile=json.loads(profile)
+  try:profile=read_profile(file)
   except:
    request=urllib2.Request(options.profile);username=options.username
    try:
@@ -62,4 +67,10 @@ def main():
    for export in exports:file.write(export)
  for repository in repositories:path.prepend(repository)
  print('export PATH=%s'%path)
+ if options.save and options.profile!=DEFAULT_PROFILE:
+  log('Saving profile...');default={};default_filename=os.path.expanduser(DEFAULT_PROFILE)
+  try:default=read_profile(default_filename)
+  except:pass
+  default=dict(default.items()+profile.items())
+  with open(default_filename,'w') as file:json.dump(default,file)
 if __name__=='__main__':main()

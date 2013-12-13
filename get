@@ -29,6 +29,8 @@ import urllib2
 import base64
 import sys
 
+DEFAULT_PROFILE = "~/.get/default.json"
+
 
 def log(message):
   if (len(message) > 0):
@@ -75,10 +77,16 @@ class Chdir():
   
 
 def git(parameters):
-  output = subprocess.check_output(["git"] + parameters)
-  lines = output.split("\n")
-  for line in lines:
-    log(line)
+  try:
+    command = ["git"] + parameters
+    log("Running: %s" % " ".join(command))
+    output = subprocess.check_output(command)
+    lines = output.split("\n")
+    for line in lines:
+      log(line)
+  except:
+    log("Unable to clone repository.")
+    exit(1)
 
 
 def add_repository(url, directory):
@@ -96,13 +104,11 @@ def add_repository(url, directory):
   # Check to see if the repository exists.
   # If the repository exists, attempt to git update.
   # If the repository does not exist, check it out.
-  
+
   if (not os.path.exists(target)):
     with Chdir(parent):
-      log(parent)
-      log(url)
       log("Checking out repository...")
-      git(["clone", url])
+      git(["clone", url, target])
   else:
     with Chdir(target):
       log("Updating the repository...")
@@ -110,12 +116,20 @@ def add_repository(url, directory):
   
   return target
 
+def read_profile(filename):
+  with open(filename) as f:
+    profile = f.read()
+    profile = json.loads(profile)
+  return profile
+
+
 def main():
   parser = argparse.ArgumentParser(description = "Clone or update git repositories and ensure they are available on the path.")
-  parser.add_argument("profile", nargs = '?', default = "~/.get/default.json", help = "JSON encoded profile as a string, file or URL. If no profile is specified then the default local path of ~/.get/default.json will be used.")
+  parser.add_argument("profile", nargs = '?', default = DEFAULT_PROFILE, help = "JSON encoded profile as a string, file or URL. If no profile is specified then the default local path of ~/.get/default.json will be used")
   parser.add_argument("-u", "--username", help = "Username for basic HTTP authentication")
   parser.add_argument("-p", "--password", help = "Username for basic HTTP authentication")
   parser.add_argument("-P", "--persist", action = "store_true", default = False, help = "Persist the path modifications by appending to ~/.bash_profile")
+  parser.add_argument("-s", "--save", action = "store_true", default = False, help = "Merge the profile into the default profile for future updates")
   options = parser.parse_args()
 
   profile = None
@@ -128,9 +142,7 @@ def main():
     # If the profile fails to load as JSON attempt to load it as a file.
     file = os.path.expanduser(options.profile)
     try:
-      with open(file) as f:
-        profile = f.read()
-        profile = json.loads(profile)
+      profile = read_profile(file)
     except:
 
       # If the profile fails to load from the file, fetch it as a URL.
@@ -197,6 +209,20 @@ def main():
   for repository in repositories:
     path.prepend(repository)
   print ('export PATH=%s' % path)
+
+  # Save the profile if requested (and we're not already using the default profile)
+  if options.save and options.profile != DEFAULT_PROFILE:
+    log("Saving profile...")
+    default = {}
+    default_filename = os.path.expanduser(DEFAULT_PROFILE)
+    try:
+      default = read_profile(default_filename)
+    except:
+      pass
+    default = dict(default.items() + profile.items())
+    with open(default_filename, 'w') as file:
+      json.dump(default, file)
+
 
 if __name__ == "__main__":
   main()
